@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/series-label.js"></script>
+</head>
+
+<body>
+  <style>
+    #container {
+      min-width: 310px;
+      width: 8000px;
+      height: 400px;
+      margin: 0 auto
+    }
+  </style>
+  <label>apikey
+    <input type="password"></input>
+  </label>
+  <button>submit</button>
+  <div id="container"></div>
+
+
+  <script>
+    document.querySelector('button').addEventListener('click', loadData)
+
+    function loadData () {
+      axios.get('https://cgm-adam.herokuapp.com/api/v1/entries?count=5000', {
+        api_secret: document.querySelector('input').value
+      })
+      .then(showData)
+      .catch((err) => window.alert(err))
+    }
+
+    function showData(result) {
+      //console.log(JSON.stringify(result))
+      Highcharts.chart('container', {
+        //chart: { type: 'area' },
+        title: {
+          text: null
+        },
+
+        xAxis: {
+          type: 'datetime',
+          dateTimeLabelFormats: { // don't display the dummy year
+            month: '%e. %b',
+            year: '%b'
+          },
+          title: {
+            text: null
+          }
+        },
+
+        yAxis: {
+          title: {
+            text: null
+          }
+        },
+        legend: {
+          layout: 'vertical',
+          align: 'right',
+          verticalAlign: 'middle'
+        },
+
+        plotOptions: {
+          series: {
+            label: {
+              connectorAllowed: false
+            },
+            pointStart: 2010
+          }
+        },
+
+        series: [{
+          name: 'Sensor glucose value',
+          data: sgv(result.data)
+        },
+        { name: 'prediction',
+          data: predict(sgv(result.data))
+        }],
+
+        responsive: {
+          rules: [{
+            condition: {
+              maxWidth: 500
+            },
+            chartOptions: {
+              legend: {
+                layout: 'horizontal',
+                align: 'center',
+                verticalAlign: 'bottom'
+              }
+            }
+          }]
+        }
+
+      });
+    }
+
+    function sgv (data) {
+      return data
+      .filter((i) => i.type === 'sgv')
+      .sort((i1, i2) => i1.date > i2.date)
+      .map((i) => [i.date, i.sgv])
+    }
+
+    function predict(data) {
+      var prevData
+      return data.reduce(((accu, data) => {
+        if (prevData) {
+          var dV1 = data[1]-prevData[1] /* mg/dl */
+          var dT1 = data[0] - prevData[0] /* ms */
+          if (dT1 < 0 ) window.alert('unsorted')
+          // var dV2 = data[1] - 70
+          // var dT2 = 20 * 60 * 1000
+          prevData = data
+          return accu.concat([[ data[0], 60 * 60 * 1000 * (dV1 /** dT2*/) / (dT1 /** dV2 */)]])
+        }
+        prevData = data
+        return []
+      }))//.map((d) => (d[1] < 0) ? d : [d[0], null])
+    }
+  </script>
+</body>
+
+</html>
