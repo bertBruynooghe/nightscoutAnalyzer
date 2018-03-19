@@ -41,7 +41,7 @@
     function showData(result) {
       //console.log(JSON.stringify(result))
       Highcharts.chart('container', {
-        //chart: { type: 'area' },
+        // chart: { type: 'area' },
         title: {
           text: null
         },
@@ -73,7 +73,6 @@
             label: {
               connectorAllowed: false
             },
-            pointStart: 2010
           }
         },
 
@@ -81,9 +80,11 @@
           name: 'Sensor glucose value',
           data: sgv(result.data)
         },
+        // { name: 'first derivative',
+        //   data: change(sgv(result.data))
+        // },
         { name: 'prediction',
-          data: predict(sgv(result.data))
-        }],
+          data: predict(sgv(result.data))}],
 
         responsive: {
           rules: [{
@@ -110,7 +111,7 @@
       .map((i) => [i.date, i.sgv])
     }
 
-    function predict(data) {
+    function change (data) {
       var prevData
       return data.reduce(((accu, data) => {
         if (prevData) {
@@ -125,6 +126,32 @@
         prevData = data
         return []
       }))//.map((d) => (d[1] < 0) ? d : [d[0], null])
+    }
+
+    function predict (data) {
+      var prevData
+      var secondData
+      return data.reduce(((accu, data) => {
+        if (prevData) {
+          var dV1 = data[1]-prevData[1] /* mg/dl */
+          var dT1 = data[0] - prevData[0] /* ms */
+          if (dT1 < 0 ) window.alert('unsorted')
+          prevData = data
+          var V = data[1] + ((dV1/dT1) * 20 * 60 * 1000)
+          if (!secondData) {
+            secondData = true
+            console.log('secondData', data)
+            console.log('dV', dV1)
+            console.log('dT', dT1)
+            console.log('T2', data[0] + 20 * 60 * 1000)
+            console.log('V2', V)
+          }
+          return accu.concat([[ data[0], V < 65 ? V : null]])
+        }
+        prevData = data
+        console.log('firstData', data)
+        return []
+      }))
     }
   </script>
 </body>
